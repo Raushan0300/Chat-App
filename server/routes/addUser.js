@@ -14,7 +14,7 @@ router.post('/', isAuthenticated, async(req, res)=>{
         const user = await User.findById(userId);
         if(!user) return res.status(400).json({err: 'User not found'});
 
-        const ChatExist = await Chat.findById(req.user.chatId);
+        const ChatExist = await Chat.findOne({user: req.user._id});
         
         if(!ChatExist){
             const newChat = new Chat({
@@ -22,28 +22,55 @@ router.post('/', isAuthenticated, async(req, res)=>{
                 connectedUsers: [
                     {
                         user: userId,
-                        lastMessage: ''
+                        lastMessage: '',
+                        name: user.name
                     }
                 ]
             });
 
             await newChat.save();
+
+            const newConnectedChat = new Chat({
+                user: userId,
+                connectedUsers: [
+                    {
+                        user: req.user._id,
+                        lastMessage: '',
+                        name: req.user.name
+                    }
+                ]
+            });
+
+            await newConnectedChat.save();
             return res.status(200).json({msg: 'User added to chat'});
         }
 
-        const userExist = ChatExist.connectedUsers.find(user => user.user.toString() === userId);
+        const userExist = ChatExist.connectedUsers.find(user => user.user == userId);
         if(userExist) return res.status(400).json({err: 'User already added'});
 
-        const newConnectedUser = await Chat.findByIdAndUpdate(req.user.chatId, {
+        const newConnectedUser = await Chat.findOneAndUpdate({user: req.user._id}, {
             $push: {
                 connectedUsers: {
                     user: userId,
-                    lastMessage: ''
+                    lastMessage: '',
+                    name: user.name
                 }
             }
         }, {new: true});
 
         await newConnectedUser.save();
+
+        const newConnectedUserChat = await Chat.findByIdAndUpdate({user: userId}, {
+            $push: {
+                connectedUsers: {
+                    user: req.user._id,
+                    lastMessage: '',
+                    name: req.user.name
+                }
+            }
+        }, {new: true});
+
+        await newConnectedUserChat.save();
         return res.status(200).json({msg: 'User added to chat'});
     } catch (error) {
         console.log(error);
