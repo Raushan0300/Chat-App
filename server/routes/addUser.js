@@ -8,47 +8,23 @@ const Message = require('../models/Messages');
 const isAuthenticated = require('../controller/isAuthenticated');
 
 router.post('/', isAuthenticated, async(req, res)=>{
-    const {userId} = req.body;
+    const {email} = req.body;
 
     try {
-        const user = await User.findById(userId);
+        const user = await User.findOne({email});
         if(!user) return res.status(400).json({err: 'User not found'});
+
+        const userId = user._id;
 
         const ChatExist = await Chat.findOne({user: req.user._id});
         
-        if(!ChatExist){
-            const newChat = new Chat({
-                user: req.user.id,
-                connectedUsers: [
-                    {
-                        user: userId,
-                        lastMessage: '',
-                        name: user.name
-                    }
-                ]
-            });
 
-            await newChat.save();
-
-            const newConnectedChat = new Chat({
-                user: userId,
-                connectedUsers: [
-                    {
-                        user: req.user._id,
-                        lastMessage: '',
-                        name: req.user.name
-                    }
-                ]
-            });
-
-            await newConnectedChat.save();
-            return res.status(200).json({msg: 'User added to chat'});
+        if(ChatExist){
+            const userExist = ChatExist.connectedUsers.find(user => user.user == userId);
+        if(userExist) return res.status(400).json({err: 'User already added'});
         }
 
-        const userExist = ChatExist.connectedUsers.find(user => user.user == userId);
-        if(userExist) return res.status(400).json({err: 'User already added'});
-
-        const newConnectedUser = await Chat.findOneAndUpdate({user: req.user._id}, {
+        let newConnectedUser = await Chat.findOneAndUpdate({user: req.user._id}, {
             $push: {
                 connectedUsers: {
                     user: userId,
@@ -58,9 +34,22 @@ router.post('/', isAuthenticated, async(req, res)=>{
             }
         }, {new: true});
 
+        if(!newConnectedUser){
+            newConnectedUser = new Chat({
+                        user: req.user._id,
+                        connectedUsers: [
+                            {
+                                user: userId,
+                                lastMessage: '',
+                                name: user.name
+                            }
+                        ]
+                    });
+        }
+
         await newConnectedUser.save();
 
-        const newConnectedUserChat = await Chat.findByIdAndUpdate({user: userId}, {
+        let newConnectedUserChat = await Chat.findOneAndUpdate({user: userId}, {
             $push: {
                 connectedUsers: {
                     user: req.user._id,
@@ -69,6 +58,19 @@ router.post('/', isAuthenticated, async(req, res)=>{
                 }
             }
         }, {new: true});
+
+        if(!newConnectedUserChat){
+            newConnectedUserChat = new Chat({
+                user: userId,
+                connectedUsers: [
+                    {
+                        user: req.user._id,
+                        lastMessage: '',
+                        name: req.user.name
+                    }
+                ]
+            });
+        }
 
         await newConnectedUserChat.save();
         return res.status(200).json({msg: 'User added to chat'});

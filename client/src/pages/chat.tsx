@@ -1,7 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchData } from "@/config";
+import { PlusCircleIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+  } from "@/components/ui/dialog"
+  
 
 
 const Chat = () => {
@@ -44,19 +54,32 @@ const Chat = () => {
     // ];
 
     const [chats, setChats] = useState<any>([]);
+    const [email, setEmail] = useState<string>("");
+    const [open, setOpen] = useState<boolean>(false);
 
     const token = localStorage.getItem("token");
 
+    const fetchChats = async()=>{
+        const res = await fetchData('/chat', "GET", {}, {authorization: `${token}`});
+        if(res.status === 200){
+            setChats(res.data);
+            console.log(res.data?.Chats[0]?.connectedUsers);
+        }
+    };
+
     useEffect(()=>{
-        const fetchChats = async()=>{
-            const res = await fetchData('/chat', "GET", {}, {authorization: `${token}`});
-            if(res.status === 200){
-                setChats(res.data);
-                console.log(res.data?.Chats[0]?.connectedUsers);
-            }
-        };
         fetchChats();
     },[]);
+
+    const handleAddUser = async()=>{
+        const res = await fetchData('/add-user', "POST", {email}, {authorization: `${token}`});
+        if(res.status === 200){
+            await fetchChats();
+            setOpen(false);
+        } else{
+            alert(res.data.err);
+        }
+    }
 
     const messages = [
         {
@@ -79,6 +102,7 @@ const Chat = () => {
   return (
     <div className="flex w-screen">
         <div className="flex flex-col border-r border-white w-[30%] h-screen">
+            <div>
             <div className="flex flex-col border-b border-white w-full px-5 py-2">
                 <h1 className="text-3xl font-semibold">Chats</h1>
             </div>
@@ -93,6 +117,22 @@ const Chat = () => {
                     </div>
                 ))}
             </div>
+            </div>
+
+            {/* <div className="fixed bottom-4 right-[72%]"><PlusCircleIcon className="w-[50px] h-[50px]" /></div> */}
+            <Dialog open={open} onOpenChange={()=>{setOpen(!open)}}>
+  <DialogTrigger><div className="fixed bottom-4 right-[72%]" onClick={()=>{setOpen(true)}}><PlusCircleIcon className="w-[50px] h-[50px]" /></div></DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Add User to your Chat List</DialogTitle>
+    </DialogHeader>
+    <div className="flex flex-col gap-3">
+        <Input type="email" placeholder="Enter Email of User" value={email} onChange={(e)=>{setEmail(e.target.value)}} />
+        <Button onClick={()=>{handleAddUser()}}>Add User</Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
         </div>
 
         <div className="flex flex-col w-[70%] h-screen">
@@ -100,7 +140,7 @@ const Chat = () => {
                 <h1 className="text-2xl font-semibold">John Doe</h1>
                 <p>online</p>
             </div>
-            <div className="flex flex-col w-full gap-5 px-5 py-2">
+            <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh]">
                 {messages.map((message) => (
                     <div className="w-full">
                         <div className="flex flex-col gap-1 text-right">
