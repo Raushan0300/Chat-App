@@ -49,12 +49,15 @@ router.post('/', isAuthenticated, async(req, res)=>{
 
         await newConnectedUser.save();
 
+        const addUser = newConnectedUser.connectedUsers.find(user => user.user.toString() === userId.toString());
+
         let newConnectedUserChat = await Chat.findOneAndUpdate({user: userId}, {
             $push: {
                 connectedUsers: {
                     user: req.user._id,
                     lastMessage: '',
-                    name: req.user.name
+                    name: req.user.name,
+                    _id: addUser ? addUser._id : undefined
                 }
             }
         }, {new: true});
@@ -66,7 +69,8 @@ router.post('/', isAuthenticated, async(req, res)=>{
                     {
                         user: req.user._id,
                         lastMessage: '',
-                        name: req.user.name
+                        name: req.user.name,
+                        _id: addUser ? addUser._id : undefined
                     }
                 ]
             });

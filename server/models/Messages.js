@@ -3,13 +3,12 @@ const mongoose = require('mongoose');
 const MessageSchema = new mongoose.Schema({
     chatId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Chat'
     },
     senderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
-    receiverId: {
+    recieverId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
@@ -17,6 +16,10 @@ const MessageSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    lastTime: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 const Message = mongoose.model('Message', MessageSchema);

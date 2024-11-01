@@ -21,7 +21,8 @@ app.get('/', (req, res)=>{
 app.use('/auth', require('./routes/auth'));
 app.use('/chat', require('./routes/chatRoute'));
 app.use('/add-user', require('./routes/addUser'));
-
+app.use('/getmsg', require('./routes/getMsg'));
+app.use('/sendmsg', require('./routes/sendmsg'));
 
 server.listen(PORT, ()=>{
     console.log(`Server is running on port ${PORT}`);
