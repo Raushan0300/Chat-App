@@ -9,9 +9,8 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-  } from "@/components/ui/dialog"
-  
-
+  } from "@/components/ui/dialog";
+import socket from "@/socket";
 
 const Chat = () => {
     const [chats, setChats] = useState<any>([]);
@@ -37,6 +36,22 @@ const Chat = () => {
         fetchChats();
     },[]);
 
+    useEffect(()=>{
+        if(chatId && socket){
+            socket.emit("join-chat", {chatId});
+
+        socket.on("receive-message", (data: any)=>{
+            setMessages((prevMessages: any)=>[...prevMessages, data]);
+        });
+        }
+
+        return()=>{
+            if(socket){
+                socket.off("receive-message");
+            }
+        }
+    }, [chatId]);
+
     const handleAddUser = async()=>{
         const res = await fetchData('/add-user', "POST", {email}, {authorization: `${token}`});
         if(res.status === 200){
@@ -48,11 +63,14 @@ const Chat = () => {
     };
 
     const sendMessage = async()=>{
-        const res = await fetchData('/sendmsg', "POST", {recieverId, chatId, message: msg}, {authorization: `${token}`});
-        if(res.status === 200){
-            setMsg("");
-            // getMessage();
-        }
+        // const res = await fetchData('/sendmsg', "POST", {recieverId, chatId, message: msg}, {authorization: `${token}`});
+        // if(res.status === 200){
+        //     setMsg("");
+        //     // getMessage();
+        // }
+
+        socket.emit("send-message", {recieverId, chatId, message: msg, token});
+        setMsg("");
     }
 
     const getMessage = async()=>{
@@ -108,7 +126,7 @@ const Chat = () => {
                 <h1 className="text-2xl font-semibold">John Doe</h1>
                 <p>online</p>
             </div>
-            <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh]">
+            <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh] overflow-auto">
                 {messages.map((message: any) => (
                         <div className={`w-full flex ${message.recieverId === recieverId ? 'justify-end' : ''}`}>
                         <p className={`text-lg py-2 px-4 rounded-md max-w-[60%] ${message.recieverId === recieverId ? 'text-right bg-blue-400' : 'bg-orange-400'}`}>
