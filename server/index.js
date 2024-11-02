@@ -34,7 +34,12 @@ io.on('connection', (socket)=>{
     socket.on('join-chat', ({chatId})=>{
         socket.join(chatId);
         console.log('User joined chat: ', chatId);
-    })
+    });
+
+    socket.on('leave-chat', ({chatId})=>{
+        socket.leave(chatId);
+        console.log('User left chat: ', chatId);
+    });
 
     socket.on('send-message', async(data)=>{
         const {recieverId, message, chatId, token} = data;
