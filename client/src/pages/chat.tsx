@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import socket from "@/socket";
+import { ModeToggle } from "@/components/mode-toggle";
 
 const Chat = () => {
   const [chats, setChats] = useState<any>([]);
@@ -19,6 +20,7 @@ const Chat = () => {
   const [recieverId, setRecieverId] = useState<string>("");
   const [chatId, setChatId] = useState<string>("");
   const [msg, setMsg] = useState<string>("");
+  const [recieverName, setRecieverName] = useState<string>("");
 
   const [messages, setMessages] = useState<any>([]);
 
@@ -80,11 +82,6 @@ const Chat = () => {
   };
 
   const sendMessage = async () => {
-    // const res = await fetchData('/sendmsg', "POST", {recieverId, chatId, message: msg}, {authorization: `${token}`});
-    // if(res.status === 200){
-    //     setMsg("");
-    //     // getMessage();
-    // }
 
     socket.emit("send-message", { recieverId, chatId, message: msg, token });
     setMsg("");
@@ -99,7 +96,8 @@ const Chat = () => {
     );
     if (res.status === 200) {
       console.log(res.data);
-      setMessages(res.data);
+      setMessages(res.data.Messages);
+      setRecieverName(res.data.name);
     }
   };
 
@@ -111,8 +109,9 @@ const Chat = () => {
     <div className="flex w-screen">
       <div className="flex flex-col border-r border-white w-[30%] h-screen">
         <div>
-          <div className="flex flex-col border-b border-white w-full px-5 py-2">
+          <div className="flex justify-between border-b border-white w-full px-5 py-2">
             <h1 className="text-3xl font-semibold">Chats</h1>
+            <ModeToggle />
           </div>
           <div className="flex flex-col px-5 py-2 gap-5 mt-5">
             {chats?.Chats?.[0]?.connectedUsers &&
@@ -134,7 +133,6 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* <div className="fixed bottom-4 right-[72%]"><PlusCircleIcon className="w-[50px] h-[50px]" /></div> */}
         <Dialog
           open={open}
           onOpenChange={() => {
@@ -173,10 +171,9 @@ const Chat = () => {
         </Dialog>
       </div>
 
-      <div className="flex flex-col w-[70%] h-screen">
+      {chatId&&<div className="flex flex-col w-[70%] h-screen">
         <div className="flex flex-col border-b border-white w-full px-5 py-2">
-          <h1 className="text-2xl font-semibold">John Doe</h1>
-          <p>online</p>
+          <h1 className="text-2xl font-semibold">{recieverName}</h1>
         </div>
         <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh] overflow-auto">
           {messages.map((message: any) => (
@@ -210,7 +207,7 @@ const Chat = () => {
             Send
           </Button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 };
