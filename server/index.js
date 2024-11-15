@@ -16,6 +16,7 @@ const sentMessage = require('./controller/sentMessage');
 
 const io = new SocketServer({
     cors: '*',
+    maxHttpBufferSize: 1e8
 })
 
 io.attach(server);
@@ -28,35 +29,55 @@ app.get('/', (req, res)=>{
     res.send('Hello World');
 });
 
-io.on('connection', (socket)=>{
-    console.log('User connected: ', socket.id);
 
-    socket.on('join-chat', ({chatId})=>{
+
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    socket.on('join-chat', ({ chatId }) => {
         socket.join(chatId);
-        console.log('User joined chat: ', chatId);
+        console.log('User joined chat:', chatId);
     });
 
-    socket.on('leave-chat', ({chatId})=>{
+    socket.on('leave-chat', ({ chatId }) => {
         socket.leave(chatId);
-        console.log('User left chat: ', chatId);
+        console.log('User left chat:', chatId);
     });
 
-    socket.on('send-message', async(data)=>{
-        const {recieverId, message, chatId, token} = data;
+    socket.on('send-message', async (data) => {
+        const { recieverId, message, chatId, token, fileName, fileData } = data;
 
-        const isVerify = jwt.verify(token, process.env.JWT_SECRET);
-        const senderId = isVerify.id;
+        try {
+            // Verify JWT token to get senderId
+            const isVerify = jwt.verify(token, process.env.JWT_SECRET);
+            const senderId = isVerify.id;
 
-        await sentMessage(chatId, senderId, recieverId, message);
+            // Save message with optional file info
 
-        io.to(chatId).emit('receive-message', {chatId, senderId, recieverId, message, lastTime: Date.now()});
+            io.to(chatId).emit('receive-message', {
+                chatId,
+                senderId,
+                recieverId,
+                message,
+                fileName,
+                fileData,  // Emit the raw buffer for real-time file handling on the client side
+                lastTime: Date.now(),
+            });
+
+            
+            await sentMessage(chatId, senderId, recieverId, message, fileName, fileData);
+
+            // Emit message or file metadata to the chat room
+        } catch (error) {
+            console.log('Error sending message:', error);
+            socket.emit('error', { message: 'Failed to send message' });
+        }
     });
 
-
-    socket.on('disconnect', ()=>{
-        console.log('User disconnected: ', socket.id);
-    })
-})
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
+});
 
 app.use('/auth', require('./routes/auth'));
 app.use('/chat', require('./routes/chatRoute'));

@@ -14,7 +14,12 @@ const MessageSchema = new mongoose.Schema({
     },
     message: {
         type: String,
-        required: true
+    },
+    fileName:{
+        type: String,
+    },
+    fileData:{
+        type: String,
     },
     lastTime: {
         type: Date,

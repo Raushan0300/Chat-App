@@ -1,7 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchData } from "@/config";
-import { PlusCircleIcon } from "lucide-react";
+import {
+  PaperclipIcon,
+  PlusCircleIcon,
+  FileIcon,
+  Download,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -12,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import socket from "@/socket";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Label } from "@/components/ui/label";
 
 const Chat = () => {
   const [chats, setChats] = useState<any>([]);
@@ -21,11 +27,11 @@ const Chat = () => {
   const [chatId, setChatId] = useState<string>("");
   const [msg, setMsg] = useState<string>("");
   const [recieverName, setRecieverName] = useState<string>("");
-
   const [messages, setMessages] = useState<any>([]);
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [previewDialog, setPreviewDialog] = useState<boolean>(false);
 
   const prevChatIdRef = useRef<string>("");
-
   const token = localStorage.getItem("token");
 
   const fetchChats = async () => {
@@ -46,11 +52,10 @@ const Chat = () => {
 
   useEffect(() => {
     if (chatId && socket) {
-
-      if(prevChatIdRef.current && prevChatIdRef.current !== chatId){
+      if (prevChatIdRef.current && prevChatIdRef.current !== chatId) {
         socket.emit("leave-chat", { chatId: prevChatIdRef.current });
       }
-        
+
       socket.emit("join-chat", { chatId });
       prevChatIdRef.current = chatId;
 
@@ -81,10 +86,49 @@ const Chat = () => {
     }
   };
 
-  const sendMessage = async () => {
+  const handleFileChange = (e: any) => {
+    const file = e.target.files[0];
+    if(file.size > 1024 * 1024 * 5) {
+      alert("File size should be less than 5MB");
+      return;
+    }
+    setSelectedFile(file);
+    setPreviewDialog(true);
+  };
 
-    socket.emit("send-message", { recieverId, chatId, message: msg, token });
-    setMsg("");
+  const sendMessage = async () => {
+    let fileName: any = null;
+    let fileData: any = null;
+
+    if (selectedFile) {
+      fileName = selectedFile.name;
+      const reader: any = new FileReader();
+      reader.readAsDataURL(selectedFile);
+      reader.onloadend = () => {
+        fileData = reader.result.split(",")[1];
+
+        socket.emit("send-message", {
+          recieverId,
+          chatId,
+          message: msg,
+          token,
+          fileName,
+          fileData,
+        });
+
+        setMsg("");
+        setSelectedFile(null);
+      };
+    } else {
+      socket.emit("send-message", {
+        recieverId,
+        chatId,
+        message: msg,
+        token,
+      });
+
+      setMsg("");
+    }
   };
 
   const getMessage = async () => {
@@ -95,7 +139,6 @@ const Chat = () => {
       { authorization: `${token}` }
     );
     if (res.status === 200) {
-      console.log(res.data);
       setMessages(res.data.Messages);
       setRecieverName(res.data.name);
     }
@@ -104,6 +147,56 @@ const Chat = () => {
   useEffect(() => {
     getMessage();
   }, [chatId]);
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewDialog(false);
+  };
+
+  const renderFilePreview = (fileBuffer: string, fileName: string) => {
+    const fileType = fileName.split(".").pop()?.toLowerCase();
+
+    if (fileType && ["jpg", "jpeg", "png", "gif", "bmp"].includes(fileType)) {
+      return (
+          <Dialog>
+            <DialogTrigger>
+            <div className="w-32 h-32 bg-green-100 p-2">
+          <img
+            src={`data:image/${fileType};base64,${fileBuffer}`}
+            alt={fileName}
+            className="w-full h-full object-cover"
+          />
+          </div>
+            </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{fileName}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center">
+            <img
+              src={`data:image/${fileType};base64,${fileBuffer}`}
+              alt={fileName}
+              className="w-full h-full"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <FileIcon className="w-8 h-8" />
+        <a
+          href={`data:application/octet-stream;base64,${fileBuffer}`}
+          download={fileName}>
+          <Button>
+            <Download /> {fileName}
+          </Button>
+        </a>
+      </div>
+    );
+  };
 
   return (
     <div className="flex w-screen">
@@ -135,15 +228,11 @@ const Chat = () => {
 
         <Dialog
           open={open}
-          onOpenChange={() => {
-            setOpen(!open);
-          }}>
+          onOpenChange={() => setOpen(!open)}>
           <DialogTrigger>
             <div
               className="fixed bottom-4 right-[72%]"
-              onClick={() => {
-                setOpen(true);
-              }}>
+              onClick={() => setOpen(true)}>
               <PlusCircleIcon className="w-[50px] h-[50px]" />
             </div>
           </DialogTrigger>
@@ -156,58 +245,99 @@ const Chat = () => {
                 type="email"
                 placeholder="Enter Email of User"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                }}
+                onChange={(e) => setEmail(e.target.value)}
               />
-              <Button
-                onClick={() => {
-                  handleAddUser();
-                }}>
-                Add User
-              </Button>
+              <Button onClick={handleAddUser}>Add User</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {chatId&&<div className="flex flex-col w-[70%] h-screen">
-        <div className="flex flex-col border-b border-white w-full px-5 py-2">
-          <h1 className="text-2xl font-semibold">{recieverName}</h1>
-        </div>
-        <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh] overflow-auto">
-          {messages.map((message: any) => (
-            <div
-              className={`w-full flex ${
-                message.recieverId === recieverId ? "justify-end" : ""
-              }`}>
-              <p
-                className={`text-lg py-2 px-4 rounded-md max-w-[60%] ${
-                  message.recieverId === recieverId
-                    ? "text-right bg-blue-400"
-                    : "bg-orange-400"
+      {chatId && (
+        <div className="flex flex-col w-[70%] h-screen">
+          <div className="flex flex-col border-b border-white w-full px-5 py-2">
+            <h1 className="text-2xl font-semibold">{recieverName}</h1>
+          </div>
+          <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh] overflow-auto">
+            {messages.map((message: any, index: number) => (
+              <div
+                key={index}
+                className={`w-full flex ${
+                  message.recieverId === recieverId ? "justify-end" : ""
                 }`}>
-                {message.message}
-              </p>
+                {message.message && (
+                  <p
+                    className={`text-lg py-2 px-4 rounded-md max-w-[60%] ${
+                      message.recieverId === recieverId
+                        ? "text-right bg-blue-400"
+                        : "bg-orange-400"
+                    }`}>
+                    {message.message}
+                  </p>
+                )}
+                {message.fileData &&
+                  renderFilePreview(message.fileData, message.fileName)}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 px-5 py-2">
+            <div className="flex items-center">
+              <Label htmlFor="file">
+                <PaperclipIcon />
+              </Label>
+              <Input
+                id="file"
+                type="file"
+                className="hidden"
+                onChange={handleFileChange}
+              />
             </div>
-          ))}
+            <Input
+              placeholder="Type a message"
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+            />
+
+            <Dialog
+              open={previewDialog}
+              onOpenChange={setPreviewDialog}>
+              <DialogContent>
+                {selectedFile && (
+                  <div className="flex flex-col items-center mt-4">
+                    {selectedFile.type.startsWith("image/") ? (
+                      <img
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="preview"
+                        className="w-32 h-32 object-cover mb-2"
+                      />
+                    ) : (
+                      <FileIcon className="w-16 h-16 mb-2" />
+                    )}
+                    <p className="text-sm font-semibold">{selectedFile.name}</p>
+
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        variant="secondary"
+                        onClick={handleRemoveFile}>
+                        Remove
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setPreviewDialog(false);
+                          sendMessage();
+                        }}>
+                        Confirm & Send
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Button onClick={sendMessage}>Send</Button>
+          </div>
         </div>
-        <div className="flex gap-2 px-5 py-2">
-          <Input
-            placeholder="Type a message"
-            value={msg}
-            onChange={(e) => {
-              setMsg(e.target.value);
-            }}
-          />
-          <Button
-            onClick={() => {
-              sendMessage();
-            }}>
-            Send
-          </Button>
-        </div>
-      </div>}
+      )}
     </div>
   );
 };
