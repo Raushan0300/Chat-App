@@ -6,6 +6,8 @@ import {
   PlusCircleIcon,
   FileIcon,
   Download,
+  VideoIcon,
+  Phone
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -18,8 +20,12 @@ import {
 import socket from "@/socket";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Label } from "@/components/ui/label";
+// import { useNavigate } from "react-router-dom";
+import VideoCall from "./call";
 
 const Chat = () => {
+  // const navigate = useNavigate();
+
   const [chats, setChats] = useState<any>([]);
   const [email, setEmail] = useState<string>("");
   const [open, setOpen] = useState<boolean>(false);
@@ -30,6 +36,9 @@ const Chat = () => {
   const [messages, setMessages] = useState<any>([]);
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [previewDialog, setPreviewDialog] = useState<boolean>(false);
+
+  const [isCalling, setIsCalling] = useState<boolean>(false);
+  const [receiverSocketId, setReceiverSocketId] = useState<string>('');
 
   const prevChatIdRef = useRef<string>("");
   const token = localStorage.getItem("token");
@@ -50,6 +59,22 @@ const Chat = () => {
     fetchChats();
   }, []);
 
+  const initiateCall = async () => {
+    // Assume you have an API or method to get socket ID by userId
+    const response = await fetchData(`/getSocketId?userId=${recieverId}`, "GET", {}, {});
+    if(response.status === 200){
+      setReceiverSocketId(response?.data?.socketId);
+      console.log(response.data.socketId);
+      setIsCalling(true);
+    } else{
+      alert("User is not online");
+    }
+  };
+
+  useEffect(()=>{
+    socket.emit('register', token);
+  },[]);
+
   useEffect(() => {
     if (chatId && socket) {
       if (prevChatIdRef.current && prevChatIdRef.current !== chatId) {
@@ -59,9 +84,19 @@ const Chat = () => {
       socket.emit("join-chat", { chatId });
       prevChatIdRef.current = chatId;
 
+      // socket.on("user:connect", ({ socketId }) => {
+      //   setSocketId(socketId);
+      // });
+
       socket.on("receive-message", (data: any) => {
         setMessages((prevMessages: any) => [...prevMessages, data]);
       });
+
+      // socket.on("user-joined", ({socketId}) => {
+      //   // getMessage();
+      //   setSocketId(socketId);
+      //   console.log(socketId);
+      // });
     }
 
     return () => {
@@ -198,7 +233,7 @@ const Chat = () => {
     );
   };
 
-  return (
+  return !isCalling && !receiverSocketId ? (
     <div className="flex w-screen">
       <div className="flex flex-col border-r border-white w-[30%] h-screen">
         <div>
@@ -211,7 +246,7 @@ const Chat = () => {
               chats?.Chats?.[0]?.connectedUsers?.map((chat: any) => (
                 <div
                   key={chat._id}
-                  className="flex flex-col gap-1"
+                  className="flex flex-col gap-1 cursor-pointer"
                   onClick={() => {
                     setChatId(chat._id);
                     setRecieverId(chat.user);
@@ -255,8 +290,12 @@ const Chat = () => {
 
       {chatId && (
         <div className="flex flex-col w-[70%] h-screen">
-          <div className="flex flex-col border-b border-white w-full px-5 py-2">
+          <div className="flex justify-between items-center border-b border-white w-full px-5 py-2.5">
             <h1 className="text-2xl font-semibold">{recieverName}</h1>
+            <div className="flex gap-5">
+              <VideoIcon className="cursor-pointer" onClick={()=>{initiateCall()}}/>
+              <Phone className="cursor-pointer" />
+            </div>
           </div>
           <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh] overflow-auto">
             {messages.map((message: any, index: number) => (
@@ -339,6 +378,21 @@ const Chat = () => {
         </div>
       )}
     </div>
+  ) : (
+    // <VideoCall
+    //   chatId={chatId}
+    //   recieverId={recieverId}
+    //   recieverName={recieverName}
+    //   socketId={socketId}
+    //   setIsCalling={setIsCalling}
+    // />
+    <VideoCall
+    socketId={receiverSocketId}
+    onCallEnd={() => {
+      setIsCalling(false);
+      setReceiverSocketId('');
+    }}
+  />
   );
 };
 

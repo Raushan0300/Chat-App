@@ -13,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 const sentMessage = require('./controller/sentMessage');
+const Chat = require('./models/Chats');
 
 const io = new SocketServer({
     cors: '*',
@@ -29,13 +30,23 @@ app.get('/', (req, res)=>{
     res.send('Hello World');
 });
 
-
+const users = new Map();
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('join-chat', ({ chatId }) => {
+    socket.on('join-chat', async({ chatId }) => {
         socket.join(chatId);
+        // if(!users.has(chatId)){
+        //     console.log('Setting new chat:', chatId);
+        //     users.set(chatId, new Set([socket.id]));
+        // } else{
+        //     const existingUsers = Array.from(users.get(chatId))[0];
+        //     console.log('Existing users:', existingUsers);
+        //     users.get(chatId).add(socket.id);
+        //     io.to(existingUsers).emit('user:connect', {socketId: socket.id});
+        //     io.to(socket.id).emit('user:connect', {socketId: existingUsers});
+        // }
         console.log('User joined chat:', chatId);
     });
 
@@ -74,9 +85,48 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('user:call', ({ to, offer }) => {
+        io.to(to).emit('incoming:call', { from: socket.id, offer });
+      });
+    
+      socket.on('accept:call', ({ to, answer }) => {
+        io.to(to).emit('call:accepted', { answer });
+      });
+    
+      socket.on('ice-candidate', ({ to, candidate }) => {
+        io.to(to).emit('ice-candidate', { candidate });
+      });
+    
+      socket.on('call:end', ({ to }) => {
+        io.to(to).emit('call:ended');
+      });
+    
+      socket.on('register', async(token) => {
+        // Associate userId with socket.id
+        // Store in a map or database as per your requirement
+        const { id } = jwt.verify(token, process.env.JWT_SECRET);
+        users.set(id, socket.id);
+        console.log('User registered:', id);
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        users.forEach((value, key) => {
+            if(value === socket.id){
+                users.delete(key);
+            }
+        });
     });
+});
+
+app.get('/getSocketId', (req, res) => {
+  const { userId } = req.query;
+  const socketId = users.get(userId);
+  if (socketId) {
+    res.json({ socketId });
+  } else {
+    res.status(404).json({ error: 'User not connected' });
+  }
 });
 
 app.use('/auth', require('./routes/auth'));

@@ -13,7 +13,7 @@ const ChatSchema = new mongoose.Schema({
             },
             lastMessage: String,
             lastTime: Date,
-            name: String,
+            name: String
         }
     ]
 });
