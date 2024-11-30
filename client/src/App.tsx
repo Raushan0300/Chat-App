@@ -9,7 +9,9 @@ const App = () => {
     <Routes>
       <Route path="/" element={<Auth />} />
       <Route path="/chat" element={<Chat />} />
-      <Route path="/call" element={<Call />} />
+      <Route path="/call" element={<Call socketId={""} onCallEnd={function (): void {
+          throw new Error("Function not implemented.");
+        } } />} />
     </Routes>
     </BrowserRouter>
   );
