@@ -7,7 +7,7 @@ import {
   FileIcon,
   Download,
   VideoIcon,
-  Phone
+  ArrowLeft
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -20,11 +20,9 @@ import {
 import socket from "@/socket";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Label } from "@/components/ui/label";
-// import { useNavigate } from "react-router-dom";
 import VideoCall from "./call";
 
 const Chat = () => {
-  // const navigate = useNavigate();
 
   const [chats, setChats] = useState<any>([]);
   const [email, setEmail] = useState<string>("");
@@ -39,6 +37,21 @@ const Chat = () => {
 
   const [isCalling, setIsCalling] = useState<boolean>(false);
   const [receiverSocketId, setReceiverSocketId] = useState<string>('');
+
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(()=>{
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const prevChatIdRef = useRef<string>("");
   const token = localStorage.getItem("token");
@@ -226,7 +239,7 @@ const Chat = () => {
           href={`data:application/octet-stream;base64,${fileBuffer}`}
           download={fileName}>
           <Button>
-            <Download /> {fileName}
+            <Download /> {fileName.length > 15 ? fileName.slice(0, 15) + "..." : fileName}
           </Button>
         </a>
       </div>
@@ -235,7 +248,7 @@ const Chat = () => {
 
   return !isCalling && !receiverSocketId ? (
     <div className="flex w-screen">
-      <div className="flex flex-col border-r border-white w-[30%] h-screen">
+      <div className={`${isMobile && chatId && "hidden"} flex flex-col ${!isMobile && "border-r"} border-white ${isMobile ? "w-full" : "w-[30%]"} h-screen`}>
         <div>
           <div className="flex justify-between border-b border-white w-full px-5 py-2">
             <h1 className="text-3xl font-semibold">Chats</h1>
@@ -266,7 +279,7 @@ const Chat = () => {
           onOpenChange={() => setOpen(!open)}>
           <DialogTrigger>
             <div
-              className="fixed bottom-4 right-[72%]"
+              className={`fixed bottom-4 ${isMobile ? "right-4" : "right-[72%]"} cursor-pointer`}
               onClick={() => setOpen(true)}>
               <PlusCircleIcon className="w-[50px] h-[50px]" />
             </div>
@@ -289,12 +302,12 @@ const Chat = () => {
       </div>
 
       {chatId && (
-        <div className="flex flex-col w-[70%] h-screen">
+        <div className={`flex flex-col ${isMobile ? "w-full" : "w-[70%]"} h-screen`}>
           <div className="flex justify-between items-center border-b border-white w-full px-5 py-2.5">
-            <h1 className="text-2xl font-semibold">{recieverName}</h1>
+            <h1 className="flex gap-2 items-center text-2xl font-semibold">{isMobile && <ArrowLeft onClick={()=>{setChatId("")}} />}{recieverName}</h1>
             <div className="flex gap-5">
               <VideoIcon className="cursor-pointer" onClick={()=>{initiateCall()}}/>
-              <Phone className="cursor-pointer" />
+              {/* <Phone className="cursor-pointer" /> */}
             </div>
           </div>
           <div className="flex flex-col w-full gap-5 px-5 py-2 h-[80vh] overflow-auto">

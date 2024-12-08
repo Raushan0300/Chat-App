@@ -8,8 +8,8 @@ import { useNavigate } from "react-router-dom";
 const Auth = () => {
     const navigate = useNavigate();
     
-    const [email, setEmail] = useState<string>("");
-    const [password, setPassword] = useState<string>("");
+    const [email, setEmail] = useState<string>("user2@gmail.com");
+    const [password, setPassword] = useState<string>("user1234");
     const [name, setName] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
 
