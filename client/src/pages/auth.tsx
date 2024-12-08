@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchData } from "@/config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { BeatLoader } from "react-spinners";
 
 const Auth = () => {
     const navigate = useNavigate();
@@ -12,9 +13,12 @@ const Auth = () => {
     const [password, setPassword] = useState<string>("user1234");
     const [name, setName] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const handleLogin = async() => {
+      setIsLoading(true);
       const res = await fetchData('/auth/login', "POST", {email, password});
+      setIsLoading(false);
       if(res.status === 200){
         const token = res.data.token;
         localStorage.setItem('token', token);
@@ -25,12 +29,15 @@ const Auth = () => {
     };
 
     const handleSignup = async()=>{
+      setIsLoading(true);
       if(password !== confirmPassword){
         alert("Passwords do not match");
+        setIsLoading(false);
         return;
       };
 
       const res = await fetchData('/auth/signup', "POST", {name, email, password});
+      setIsLoading(false);
       if(res.status === 200){
         alert("Signup successful");
       } else if(res.status === 409){
@@ -52,14 +59,14 @@ const Auth = () => {
         <TabsContent value="login" className="flex flex-col gap-3">
           <Input type="email" placeholder="Email" value={email} onChange={(e)=>{setEmail(e.target.value)}} />
           <Input type="password" placeholder="Password" value={password} onChange={(e)=>{setPassword(e.target.value)}} />
-          <Button className="w-full" onClick={()=>{handleLogin()}}>Login</Button>
+          <Button className="w-full" onClick={()=>{!isLoading && handleLogin()}}>{isLoading ? <BeatLoader /> : "Login"}</Button>
         </TabsContent>
         <TabsContent value="signup" className="flex flex-col gap-3">
           <Input type="text" placeholder="Name" value={name} onChange={(e)=>{setName(e.target.value)}} />
           <Input type="email" placeholder="Email" value={email} onChange={(e)=>{setEmail(e.target.value)}} />
           <Input type="password" placeholder="Password" value={password} onChange={(e)=>{setPassword(e.target.value)}} />
           <Input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e)=>{setConfirmPassword(e.target.value)}} />
-          <Button className="w-full" onClick={()=>{handleSignup()}}>Signup</Button>
+          <Button className="w-full" onClick={()=>{!isLoading && handleSignup()}}>{isLoading ? <BeatLoader /> : "Signup"}</Button>
         </TabsContent>
       </Tabs>
     </div>
