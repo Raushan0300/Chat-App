@@ -19,7 +19,9 @@ const Auth = () => {
         const token = res.data.token;
         localStorage.setItem('token', token);
         navigate('/chat');
-      };
+      } else{
+        alert("Invalid credentials");
+      }
     };
 
     const handleSignup = async()=>{
@@ -31,7 +33,11 @@ const Auth = () => {
       const res = await fetchData('/auth/signup', "POST", {name, email, password});
       if(res.status === 200){
         alert("Signup successful");
-      };
+      } else if(res.status === 409){
+        alert("User already exists");
+      } else{
+        alert("Some error occurred");
+      }
     }
 
   return (
